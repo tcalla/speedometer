@@ -4,15 +4,15 @@ import numpy as np
 import time
 import cv2
 import os
-import initialdistance
 
 
-# def validspeed(speedlist, speed):
-#     speedlist = sorted(speedlist)
-#     medianspeed = speedlist[len(speedlist) // 2]
-#     if abs(speed - medianspeed) > medianspeed // 2:
-#         return False
-#     return True
+# Determining if a calculated speed is valid, not something much different than previous data points
+def validspeed(speedlist, speed):
+    speedlist = sorted(speedlist)
+    medianspeed = speedlist[len(speedlist) // 2]
+    if speed < medianspeed - 20 or speed > medianspeed + 20:
+        return False
+    return True
 
 
 def shownormalwindow(carx, cary, frame, speed, font, fps, speedvals):
@@ -30,9 +30,11 @@ def shownormalwindow(carx, cary, frame, speed, font, fps, speedvals):
     cv2.putText(frame_copy, "Elapsed time: {:.2f} secs".format(fps.elapsed()), (55, 80), font, 1.5,
                 (0, 0, 200), 5)
 
-    if len(speedvals) > 10:
+    if len(speedvals) > 25:
+        speedvals = sorted(speedvals)
         cv2.putText(frame_copy, "Median speed: {:.2f}".format(speedvals[len(speedvals) // 2]),
                     (carx, cary), font, 1.5, (0, 0, 200), 5)
+
     cv2.imshow("regular_window", frame_copy)
 
 
@@ -85,9 +87,7 @@ def main():
 
         prevx = None
         speedvals = []
-        key = None
         framecount = 0
-        # initialdist = initialdistance.InitialDistance()
         videofps = 30
         fps = FPS().start()
 
@@ -117,16 +117,22 @@ def main():
             # image thresholding
             ret, thresh = cv2.threshold(diff_image, 25, 255, cv2.THRESH_BINARY)
 
+            # Use "close" morphological operation to close the gaps between contours
+            # https://stackoverflow.com/questions/18339988/implementing-imcloseim-se-in-opencv
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,
+                                      cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (51, 51)))
+
             # image dilation
             dilated = cv2.dilate(thresh, kernel, iterations=1)
 
             # find contours
             contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-            # countours
+            # contours
             # Approx 0.61222 inches / pixel (for DJI 270 only)
             # For benchmarks, approx. 0.65 inches / pixel (1280 x 720p downscaled video from iPhone 13 pro)
-            inchesperpixel = 0.65
+            # Trying times two for better speed calculation
+            inchesperpixel = 0.65 * 2
             valid_cntrs = []
             cary = 0
             carx = 0
@@ -134,8 +140,7 @@ def main():
             for cntr in contours:
                 x, y, w, h = cv2.boundingRect(cntr)
                 # Setting the minimum size of something to be a contour
-                # TODO: Take the max size contour only so only a single speed added
-                if cv2.contourArea(cntr) >= 2000:
+                if cv2.contourArea(cntr) >= 1500:
                     if prevx is None:
                         prevx = x
                     else:
@@ -144,7 +149,9 @@ def main():
                         inches = abs(x - prevx) * inchesperpixel  # inches in 1/30 of a second
                         speedinmph = inches * (videofps / 17.6)  # should be mph as in/s -> mph is 1/17.6
                         # if len(speedvals) < 10 or validspeed(speedvals, speed) is True:
-                        if speedinmph != 0:
+                        if len(speedvals) <= 10 and speedinmph > 10:
+                            speedvals.append(speedinmph)
+                        elif speedinmph >= 10 and validspeed(speedvals, speedinmph):
                             speedvals.append(speedinmph)
                         prevx = x
                     valid_cntrs.append(cntr)
@@ -169,14 +176,11 @@ def main():
             showotherwindows(frame, valid_cntrs, font, speedinmph, speedvals, diff_image, thresh)
 
             # Regular image window
-            # if initialdist.inchesperpixel is not None:
             shownormalwindow(carx, cary, frame, speedinmph, font, fps, speedvals)
-            # else:
-            #     shownormalwindow(carx, cary, frame, speed, font, None, speedvals)
-
-            # 1ms delay which makes the windows appear as if it is video with pictures
-            # key = cv2.waitKey(1)
             cv2.waitKey(1)
+
+        print("Median speed: {:.2f}".format(sorted(speedvals)[len(speedvals) // 2]))
+
 
 if __name__ == '__main__':
     main()
