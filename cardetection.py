@@ -15,6 +15,14 @@ def validspeed(speedlist, speed):
     return True
 
 
+# Determine which direction car is going in which determines pixels/inch speed
+def checkDirection(x):
+    if x > 640:
+        return 0.863
+    else:
+        return 0.69
+
+
 def shownormalwindow(carx, cary, frame, speed, font, fps, speedvals):
     cv2.namedWindow("regular_window", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("regular_window", 960, 540)
@@ -69,11 +77,15 @@ def showotherwindows(frame, valid_cntrs, font, speed, speedvals, diff_image, thr
 
 
 def main():
+    # For benchmark videos
+    benchmarkSpeeds = [20, 25, 25, 30, 33]
+    videocount = 0
+
     # try to feed in all benchmark videos
-    for video in os.listdir("Benchmark-Captures"):
+    for video in os.listdir("Landscape_Benchmark_Captures_1-4-23"):
         print(video)
         # start the file video stream thread and allow the buffer to start to fill
-        fvs = FileVideoStream("Benchmark-Captures/{}".format(video)).start()
+        fvs = FileVideoStream("Landscape_Benchmark_Captures_1-4-23/{}".format(video)).start()
         time.sleep(1.0)
 
         # kernel for image dilation
@@ -90,18 +102,11 @@ def main():
         framecount = 0
         videofps = 30
         fps = FPS().start()
+        inchesperpixel = 0
 
         while fvs.running():
 
             framecount += 1
-
-            # Call out to get the user to give a distance. If the user doesn't unput in 5 seconds it forces them to
-            # if key == ord("m") or ((framecount > (videofps * 5)) and initialdist.inchesperpixel is None):
-            #     cv2.imwrite("./firstframe.ppm", frame)
-            #     while initialdist.run is True:
-            #         initialdist.main()
-            #         cv2.waitKey(0)
-            #     os.remove("./firstframe.ppm")
 
             prevframe = frame[:]
             frame = fvs.read()
@@ -132,7 +137,6 @@ def main():
             # Approx 0.61222 inches / pixel (for DJI 270 only)
             # For benchmarks, approx. 0.65 inches / pixel (1280 x 720p downscaled video from iPhone 13 pro)
             # Trying times two for better speed calculation
-            inchesperpixel = 0.65 * 2
             valid_cntrs = []
             cary = 0
             carx = 0
@@ -142,6 +146,7 @@ def main():
                 # Setting the minimum size of something to be a contour
                 if cv2.contourArea(cntr) >= 1500:
                     if prevx is None:
+                        inchesperpixel = checkDirection(x)
                         prevx = x
                     else:
                         # TODO: Give a margin for what the speed is? Like a range based on margin of error?
@@ -179,7 +184,12 @@ def main():
             shownormalwindow(carx, cary, frame, speedinmph, font, fps, speedvals)
             cv2.waitKey(1)
 
-        print("Median speed: {:.2f}".format(sorted(speedvals)[len(speedvals) // 2]))
+        finalMedianSpeed = sorted(speedvals)[len(speedvals) // 2]
+        print("Median speed: {:.2f}".format(finalMedianSpeed))
+        if videocount <= 4:
+            expectedSpeed = benchmarkSpeeds[videocount]
+            print("Error: {:.2f}%".format((abs(expectedSpeed - finalMedianSpeed) / expectedSpeed) * 100))
+        videocount += 1
 
 
 if __name__ == '__main__':
