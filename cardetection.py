@@ -4,6 +4,25 @@ import numpy as np
 import time
 import cv2
 import os
+import boto3
+
+
+# TODO:
+#  Write logic to start recording clip when motion detected
+#  Make lightweight python program for this^ recording, need to process data live with speeds on rasp. pi
+#  Give clip a unique name that can be used as key to object in bucket - this will be used for data retrieval
+#  Create DB table in postgres
+#  Try writing to DB with sample data
+#  Look at simple identifications through openCV/ML for color of car and other simple things
+#  Start looking into ways to use deep learning to identify car
+
+
+# Upload file to S3 bucket
+def uploadFile(filename, bucket):
+    s3 = boto3.resource('s3')
+
+    data = open(filename, 'rb')
+    s3.Bucket(bucket).put_object(Key=filename, Body=data)
 
 
 # Determining if a calculated speed is valid, not something much different than previous data points
@@ -193,4 +212,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    uploadFile("test.txt", "speedometer-1")
