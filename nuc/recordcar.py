@@ -64,7 +64,7 @@ def main():
             if cv2.contourArea(cntr) >= 3500:
                 emptyframe = False
                 if emptyFrameCounter >= 5:
-                    fileName = "{}".format(datetime.datetime.now()).replace(' ', '-').replace('.', '_').replace(':', '-') + ".mp4v"
+                    fileName = "recordings/{}".format(datetime.datetime.now()).replace(' ', '-').replace('.', '_').replace(':', '-') + ".mp4v"
                     out = cv2.VideoWriter(fileName, cv2.VideoWriter_fourcc(*'DIVX'), 30, (1280, 720))
                 emptyFrameCounter = 0
 
@@ -79,12 +79,12 @@ def main():
         else:
             if not uploadedFile and fileName is not None:
                 out.release()
-                if lastFileName is not None:
-                    os.remove(lastFileName)
-                uploadThread = threading.Thread(target=uploadFile, args=(fileName, "speedometer-1"))
-                uploadThread.start()
-                uploadedFile = True
-                lastFileName = fileName
+                # if lastFileName is not None:
+                    # os.remove(lastFileName)
+                # uploadThread = threading.Thread(target=uploadFile, args=(fileName, "speedometer-1"))
+                # uploadThread.start()
+                # uploadedFile = True
+                # lastFileName = fileName
 
         print(emptyFrameCounter)
 
