@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="Speedometer-rds-1" uuid="91b958a4-2bc4-46c2-b512-dc44ee127068">
+    <data-source source="LOCAL" name="speedometer_postgres_1@speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com" uuid="9b1d4346-e3b4-4a40-8af1-55feb2a387c4">
       <driver-ref>greenplum</driver-ref>
       <synchronize>true</synchronize>
       <imported>true</imported>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://speedometer-rds-1.coelkjdianuh.us-east-2.rds.amazonaws.com:5432/</jdbc-url>
+      <jdbc-url>jdbc:postgresql://speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com:5432/speedometer_postgres_1</jdbc-url>
     </data-source>
   </component>
 </project>
