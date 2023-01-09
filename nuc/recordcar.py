@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import datetime
+import shutil
 
 
 def main():
@@ -19,6 +20,7 @@ def main():
     out = None
     while True:
         check, frame = video.read()
+        
         if prevframe is None:
             prevframe = frame
 
@@ -50,8 +52,8 @@ def main():
             if cv2.contourArea(cntr) >= 1500:
                 emptyframe = False
                 if emptyFrameCounter >= 5:
-                    fileName = "recordings/{}".format(datetime.datetime.now()).replace(' ', '-').replace('.', '_').replace(':', '-') + ".mp4v"
-                    out = cv2.VideoWriter(fileName, cv2.VideoWriter_fourcc(*'DIVX'), 30, (1280, 720))
+                    fileName = "unfinished_recordings/{}".format(datetime.datetime.now()).replace(' ', '-').replace('.', '_').replace(':', '-') + ".mp4v"
+-                   out = cv2.VideoWriter(fileName, cv2.VideoWriter_fourcc(*'DIVX'), 30, (1280, 720))
                 emptyFrameCounter = 0
 
         cv2.waitKey(1)
@@ -65,6 +67,7 @@ def main():
         else:
             if not uploadedFile and fileName is not None:
                 out.release()
+                shutil.copyfile(fileName, "recordings/{}".format(fileName.split("/")[1]))
 
         print(emptyFrameCounter)
 

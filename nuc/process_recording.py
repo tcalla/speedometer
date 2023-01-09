@@ -6,6 +6,7 @@ import time
 from imutils.video import FileVideoStream
 import requests
 import psycopg2
+import configparser
 
 
 # Upload file to S3 bucket
@@ -40,7 +41,7 @@ def carColor():
 def getWeather():
     lat = 42.509255
     lon = -71.084968
-    complete_url = "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&units=imperial&appid={}".format(lat, lon, os.environ.get("openweathermap-apikey"))
+    complete_url = "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&units=imperial&appid={}".format(lat, lon, config['DEFAULT']['OWMAPIKEY'])
     response = requests.get(complete_url)
     return response.json()
 
@@ -119,6 +120,10 @@ def main():
 
                     cv2.waitKey(1)
 
+		# If there is a bugged video that doesn't have a car moving, or a car moving really slowly then delete the video and skip doing any uploading
+                if len(speedvals) == 0:
+                    os.remove("recordings/{}".format(video))
+                    continue
                 uploadFile("recordings/{}".format(video), "speedometer-1")
 
                 finalMedianSpeed = sorted(speedvals)[len(speedvals) // 2]
@@ -130,12 +135,13 @@ def main():
                 weather_description = weather["weather"][0]["description"]
 
 
+                print(os.environ.get('PGDBPASSWORD'))
                 connection = psycopg2.connect(
                     host='speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com',
                     port=5432,
                     user='postgres',
-                    password=os.environ.get('pg-db-password'),
-                    database=os.environ.get('pg-db-name')
+                    password=str(config['DEFAULT']['PGDBPASSWORD']),
+                    database=str(config['DEFAULT']['PGDBNAME'])
                 )
                 cursor = connection.cursor()
                 cursor.execute("""INSERT INTO speedometer 
@@ -150,8 +156,11 @@ def main():
 
                 os.remove("recordings/{}".format(video))
 
-        time.sleep(300)
+        # time.sleep(300)
 
 
 if __name__ == '__main__':
+    config = configparser.ConfigParser()
+    config.read('speedometer_secrets.ini')
     main()
+    
