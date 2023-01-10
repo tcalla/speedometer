@@ -10,23 +10,23 @@ import configparser
 
 
 # Upload file to S3 bucket
-def uploadFile(filename, bucket):
+def upload_file(filename, bucket):
     s3 = boto3.resource('s3')
     data = open(filename, 'rb')
     s3.Bucket(bucket).put_object(Key=filename, Body=data)
 
 
 # Determining if a calculated speed is valid, not something much different than previous data points
-def validspeed(speedlist, speed):
-    speedlist = sorted(speedlist)
-    medianspeed = speedlist[len(speedlist) // 2]
-    if speed < medianspeed - 20 or speed > medianspeed + 20:
+def valid_speed(speed_list, speed):
+    speed_list = sorted(speed_list)
+    median_speed = speed_list[len(speed_list) // 2]
+    if speed < median_speed - 20 or speed > median_speed + 20:
         return False
     return True
 
 
 # Determine which direction car is going in which determines pixels/inch speed
-def checkDirection(x):
+def check_direction(x):
     if x > 640:
         return 0.863, "left"
     else:
@@ -34,19 +34,21 @@ def checkDirection(x):
 
 
 # Use some image recognition to determine color of car
-def carColor():
+def car_color():
     return "unknown"
 
 
-def getWeather():
+def get_weather():
     lat = 42.509255
     lon = -71.084968
-    complete_url = "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&units=imperial&appid={}".format(lat, lon, config['DEFAULT']['OWMAPIKEY'])
+    complete_url = \
+        "https://api.openweathermap.org/data/3.0/onecall?lat={}&lon={}&units=imperial&appid={}". \
+            format(lat, lon, config['DEFAULT']['OWMAPIKEY'])
     response = requests.get(complete_url)
     return response.json()
 
 
-def carMake():
+def car_make():
     return "unknown"
 
 
@@ -64,14 +66,14 @@ def main():
                 # Gets a previous frame before the loop
                 frame = fvs.read()
 
-                prevx = None
-                speedvals = []
-                videofps = 30
-                inchesperpixel = 0
-                directionHeaded = None
-                color = carColor()
-                car_make = carMake()
-                videoTime = video[11:18]
+                prev_x = None
+                speed_vals = []
+                video_fps = 30
+                inches_per_pixel = 0
+                direction_headed = None
+                color = car_color()
+                make_of_car = car_make()
+                video_time = video[11:19].replace("-", ":")
 
                 while fvs.running():
                     prevframe = frame[:]
@@ -105,37 +107,36 @@ def main():
                         x, y, w, h = cv2.boundingRect(cntr)
                         # Setting the minimum size of something to be a contour
                         if cv2.contourArea(cntr) >= 1500:
-                            if prevx is None:
-                                inchesperpixel, directionHeaded = checkDirection(x)
-                                prevx = x
+                            if prev_x is None:
+                                inches_per_pixel, direction_headed = check_direction(x)
+                                prev_x = x
                             else:
-                                inches = abs(x - prevx) * inchesperpixel  # inches in 1/30 of a second
-                                speedinmph = inches * (videofps / 17.6)  # should be mph as in/s -> mph is 1/17.6
-                                if len(speedvals) <= 10 and speedinmph > 10:
-                                    speedvals.append(speedinmph)
-                                elif speedinmph >= 10 and validspeed(speedvals, speedinmph):
-                                    speedvals.append(speedinmph)
-                                prevx = x
+                                inches = abs(x - prev_x) * inches_per_pixel  # inches in 1/30 of a second
+                                speedinmph = inches * (video_fps / 17.6)  # should be mph as in/s -> mph is 1/17.6
+                                if len(speed_vals) <= 10 and speedinmph > 10:
+                                    speed_vals.append(speedinmph)
+                                elif speedinmph >= 10 and valid_speed(speed_vals, speedinmph):
+                                    speed_vals.append(speedinmph)
+                                prev_x = x
                             valid_cntrs.append(cntr)
 
                     cv2.waitKey(1)
 
-		# If there is a bugged video that doesn't have a car moving, or a car moving really slowly then delete the video and skip doing any uploading
-                if len(speedvals) == 0:
+                # If there is a bugged video that doesn't have a car moving, or a car moving really slowly then
+                # delete the video and skip doing any uploading
+                if len(speed_vals) == 0:
                     os.remove("recordings/{}".format(video))
                     continue
-                uploadFile("recordings/{}".format(video), "speedometer-1")
+                upload_file("recordings/{}".format(video), "speedometer-1")
 
-                finalMedianSpeed = sorted(speedvals)[len(speedvals) // 2]
-                weather = getWeather()["current"]
+                finalMedianSpeed = sorted(speed_vals)[len(speed_vals) // 2]
+                weather = get_weather()["current"]
                 temperature = weather["temp"]
                 visibility = weather["visibility"]
                 clouds = weather["clouds"]
                 wind_speed = weather["wind_speed"]
                 weather_description = weather["weather"][0]["description"]
 
-
-                print(os.environ.get('PGDBPASSWORD'))
                 connection = psycopg2.connect(
                     host='speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com',
                     port=5432,
@@ -147,13 +148,16 @@ def main():
                 cursor.execute("""INSERT INTO speedometer 
                 VALUES (%(recording_name)s, %(speed)s, %(direction)s, %(color)s, %(car_make)s, %(time)s, 
                 %(temperature)s, %(visibility)s, %(clouds)s, %(wind_speed)s, %(weather_description)s); """,
-                {'recording_name': video, 'speed': finalMedianSpeed, 'direction': directionHeaded, 'color': color,
-                 'car_make': car_make, 'time': videoTime, 'temperature': temperature, 'visibility': visibility,
-                 'clouds': clouds, 'wind_speed': wind_speed, 'weather_description': weather_description})
+                               {'recording_name': video, 'speed': finalMedianSpeed, 'direction': direction_headed,
+                                'color': color,
+                                'car_make': make_of_car, 'time': video_time, 'temperature': temperature,
+                                'visibility': visibility,
+                                'clouds': clouds, 'wind_speed': wind_speed, 'weather_description': weather_description})
                 connection.commit()
                 cursor.close()
                 connection.close()
 
+                os.remove("unfinished_recordings/{}".format(video))
                 os.remove("recordings/{}".format(video))
 
         # time.sleep(300)
@@ -163,4 +167,3 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('speedometer_secrets.ini')
     main()
-    

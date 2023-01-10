@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="speedometer_postgres_1@speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com" uuid="5ab8f589-cd87-4d14-8f8f-b02f12516d77">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <imported>true</imported>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com:5432/speedometer_postgres_1</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="AWS.RdsSigningPort" value="5432" />
+        <property name="AWS.RegionId" value="us-east-2" />
+        <property name="AWS.CredentialId" value="profile:default" />
+        <property name="AWS.RdsSigningHost" value="speedometer-third-try.coelkjdianuh.us-east-2.rds.amazonaws.com" />
+      </jdbc-additional-properties>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+  </component>
+</project>

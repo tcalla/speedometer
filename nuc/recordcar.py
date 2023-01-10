@@ -1,26 +1,28 @@
+import os
+
 import numpy as np
 import cv2
 import datetime
 import shutil
+import time
 
 
 def main():
-    ########## Taken from realdetection.py ###########
     video = cv2.VideoCapture(0)
-
     video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-    ####################################################
-
     prevframe = None
-    emptyFrameCounter = 6
-    uploadedFile = False
-    fileName = None
+    empty_frame_counter = 6
+    uploaded_file = False
+    file_name = None
     out = None
+    written_frames = 0
+    t = time.process_time()
+    seconds = 0
     while True:
         check, frame = video.read()
-        
+
         if prevframe is None:
             prevframe = frame
 
@@ -46,30 +48,37 @@ def main():
         # find contours
         contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-        emptyframe = True
+        empty_frame = True
         for cntr in contours:
             # Setting the minimum size of something to be a contour
             if cv2.contourArea(cntr) >= 1500:
-                emptyframe = False
-                if emptyFrameCounter >= 5:
-                    fileName = "unfinished_recordings/{}".format(datetime.datetime.now()).replace(' ', '-').replace('.', '_').replace(':', '-') + ".mp4v"
--                   out = cv2.VideoWriter(fileName, cv2.VideoWriter_fourcc(*'DIVX'), 30, (1280, 720))
-                emptyFrameCounter = 0
+                empty_frame = False
+                if empty_frame_counter >= 5:
+                    file_name = "unfinished_recordings/{}".format(datetime.datetime.now()).replace(' ', '-').replace(
+                        '.', '_').replace(':', '-') + ".mp4v"
+                    out = cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'DIVX'), 30, (1280, 720))
+                empty_frame_counter = 0
 
         cv2.waitKey(1)
         prevframe = frame
-        if emptyframe:
-            emptyFrameCounter += 1
+        if empty_frame:
+            empty_frame_counter += 1
 
-        if emptyFrameCounter <= 5:
+        if empty_frame_counter <= 5:
             out.write(frame)
-            uploadedFile = False
+            written_frames += 1
+            elapsed_time = time.process_time() - t
+            if elapsed_time - seconds > 1:
+                print("Written frames: {}".format(written_frames))
+                print(elapsed_time)
+                seconds += 1
+            uploaded_file = False
         else:
-            if not uploadedFile and fileName is not None:
+            if not uploaded_file and file_name is not None:
                 out.release()
-                shutil.copyfile(fileName, "recordings/{}".format(fileName.split("/")[1]))
+                shutil.copyfile(file_name, "recordings/{}".format(file_name.split("/")[1]))
 
-        print(emptyFrameCounter)
+        print("Empty frame counter: {}".format(empty_frame_counter))
 
 
 if __name__ == '__main__':
