@@ -27,10 +27,11 @@ def valid_speed(speed_list, speed):
 
 # Determine which direction car is going in which determines pixels/inch speed
 def check_direction(x):
+    print(x)
     if x > 640:
-        return 0.863, "left"
+        return 0.4315, "left"
     else:
-        return 0.69, "right"
+        return 0.345, "right"
 
 
 # Use some image recognition to determine color of car
@@ -55,10 +56,12 @@ def car_make():
 def main():
     while True:
         if os.listdir("recordings"):
-            for video in os.listdir("recordings"):
+            for video in os.listdir("../Landscape_Benchmark_Captures_1-4-23"):
+            # for video in os.listdir("recordings"):
                 print(video)
                 # start the file video stream thread and allow the buffer to start to fill
-                fvs = FileVideoStream("recordings/{}".format(video)).start()
+                # fvs = FileVideoStream("recordings/{}".format(video)).start()
+                fvs = FileVideoStream("../Landscape_Benchmark_Captures_1-4-23/{}".format(video)).start()
 
                 # kernel for image dilation
                 kernel = np.ones((4, 4), np.uint8)
@@ -68,7 +71,7 @@ def main():
 
                 prev_x = None
                 speed_vals = []
-                video_fps = 30
+                video_fps = 15
                 inches_per_pixel = 0
                 direction_headed = None
                 color = car_color()
@@ -88,12 +91,15 @@ def main():
                     diff_image = cv2.absdiff(grayb, graya)
 
                     # image thresholding
-                    ret, thresh = cv2.threshold(diff_image, 25, 255, cv2.THRESH_BINARY)
+                    # ret, thresh = cv2.threshold(diff_image, 25, 255, cv2.THRESH_BINARY)
+
+                    thresh = cv2.adaptiveThreshold(diff_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+                                                   35, -35)
 
                     # Use "close" morphological operation to close the gaps between contours
                     # https://stackoverflow.com/questions/18339988/implementing-imcloseim-se-in-opencv
                     thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,
-                                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (51, 51)))
+                                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20)))
 
                     # image dilation
                     dilated = cv2.dilate(thresh, kernel, iterations=1)
@@ -125,8 +131,14 @@ def main():
                 # If there is a bugged video that doesn't have a car moving, or a car moving really slowly then
                 # delete the video and skip doing any uploading
                 if len(speed_vals) == 0:
-                    os.remove("recordings/{}".format(video))
+                    try:
+                        os.remove("recordings/{}".format(video))
+                    except:
+                        continue
                     continue
+                finalMedianSpeed = sorted(speed_vals)[len(speed_vals) // 2]
+                print(finalMedianSpeed)
+                '''
                 upload_file("recordings/{}".format(video), "speedometer-1")
 
                 finalMedianSpeed = sorted(speed_vals)[len(speed_vals) // 2]
@@ -159,6 +171,7 @@ def main():
 
                 os.remove("unfinished_recordings/{}".format(video))
                 os.remove("recordings/{}".format(video))
+                '''
 
         # time.sleep(300)
 

@@ -23,6 +23,8 @@ def main():
     while True:
         check, frame = video.read()
 
+        cv2.imshow('frame', frame)
+
         if prevframe is None:
             prevframe = frame
 
@@ -34,13 +36,17 @@ def main():
         grayb = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         diff_image = cv2.absdiff(grayb, graya)
 
+        cv2.imshow('diff_image', diff_image)
+
         # image thresholding
-        ret, thresh = cv2.threshold(diff_image, 25, 255, cv2.THRESH_BINARY)
+        # ret, thresh = cv2.threshold(diff_image, 25, 255, cv2.THRESH_BINARY)
+        thresh = cv2.adaptiveThreshold(diff_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 35, -35)
+        cv2.imshow('thresh', thresh)
 
         # Use "close" morphological operation to close the gaps between contours
         # https://stackoverflow.com/questions/18339988/implementing-imcloseim-se-in-opencv
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,
-                                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (51, 51)))
+                                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20)))
 
         # image dilation
         dilated = cv2.dilate(thresh, kernel, iterations=1)
@@ -56,7 +62,7 @@ def main():
                 if empty_frame_counter >= 5:
                     file_name = "unfinished_recordings/{}".format(datetime.datetime.now()).replace(' ', '-').replace(
                         '.', '_').replace(':', '-') + ".mp4v"
-                    out = cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'DIVX'), 30, (1280, 720))
+                    out = cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'DIVX'), 15, (1280, 720))
                 empty_frame_counter = 0
 
         cv2.waitKey(1)
@@ -76,7 +82,10 @@ def main():
         else:
             if not uploaded_file and file_name is not None:
                 out.release()
-                shutil.copyfile(file_name, "recordings/{}".format(file_name.split("/")[1]))
+                try:
+                    shutil.copyfile(file_name, "recordings/{}".format(file_name.split("/")[1]))
+                except PermissionError or FileNotFoundError:
+                    print("File copying error")
 
         print("Empty frame counter: {}".format(empty_frame_counter))
 
